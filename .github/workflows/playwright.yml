@@ -44,6 +44,6 @@ jobs:
       
       - name: Add link to report in summary
         run: |
-          echo "## 测试报告hq" >> "$GITHUB_STEP_SUMMARY"
-          echo "[报告链接](https://${{ github.repository_owner }}.github.io/test/playwright-report/)" >> "$GITHUB_STEP_SUMMARY"
+          echo "## 测试报告" >> "$GITHUB_STEP_SUMMARY"
+          echo "[报告链接](https://${{ github.repository_owner }}.github.io/playwright-second/)" >> "$GITHUB_STEP_SUMMARY"
 
