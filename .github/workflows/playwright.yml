@@ -2,24 +2,35 @@ name: Deploy Playwright Report to GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main, master ]
 
 permissions:
   contents: write
-
+  
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on:  ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        browser: [chromium, firefox]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t playwright-tests . 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
 
-      - name: Run Playwright tests in Docker
-        run: docker run --rm -v "${{ github.workspace }}/playwright-report:/app/playwright-report" playwright-tests
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: npx playwright test --project=${{ matrix.browser }}
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -27,10 +38,16 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
-
+          
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./playwright-report
           publish_branch: hq-pages
+      
+      - name: Add link to report in summary
+        run: |
+          echo "## 测试报告" >> "$GITHUB_STEP_SUMMARY"
+          echo "[报告链接](https://${{ github.repository_owner }}.github.io/playwright-second/)" >> "$GITHUB_STEP_SUMMARY"
+
