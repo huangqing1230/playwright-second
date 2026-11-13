@@ -1,6 +1,6 @@
 # 使用官方 Playwright 基础镜像，包含 Node.js、浏览器和系统依赖
 # 建议固定版本，以便重复构建
-FROM mcr.microsoft.com/playwright:v1.54.0-noble
+FROM mcr.microsoft.com/playwright:v1.64.1-noble
 # 设置容器内的工作目录
 WORKDIR /app
 # 先复制 package.json 和 package-lock.json，以安装依赖
