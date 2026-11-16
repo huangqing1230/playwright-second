@@ -8,9 +8,13 @@ permissions:
   contents: write
   
 jobs:
-  deploy:
-    runs-on:  ${{ matrix.os }}
+  # ==========================================
+  # 阶段一：矩阵测试 (test)
+  # ==========================================
+  test:
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false # 建议设为 false，避免一个环境失败导致其他环境的测试被终止
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         browser: [chromium, firefox]
@@ -32,22 +36,50 @@ jobs:
       - name: Run Playwright tests
         run: npx playwright test --project=${{ matrix.browser }}
 
-      - uses: actions/upload-artifact@v4
+      # 关键修改 1：Artifact 名称必须唯一，加上矩阵变量防止冲突
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
+          # 例如：playwright-report-ubuntu-latest-chromium
+          name: playwright-report-${{ matrix.os }}-${{ matrix.browser }}
           path: playwright-report/
           retention-days: 30
-          
+
+  # ==========================================
+  # 阶段二：汇总与部署 (deploy)
+  # ==========================================
+  deploy:
+    # 关键修改 2：必须等待 test 矩阵里的所有任务都完成
+    needs: test
+    runs-on: ubuntu-latest # 部署任务只需要在一个固定环境执行一次即可
+    steps:
+      # 关键修改 3：下载所有测试环境上传的 artifact
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-reports # 所有报告会被下载到这个目录下
+
+      # 可选步骤：如果你想让访问者能在一个页面看到所有报告，可以生成一个简单的导航页
+      - name: Create Index Page
+        run: |
+          echo "<h1>Playwright Test Reports</h1><ul>" > all-reports/index.html
+          for dir in all-reports/*/; do
+            dirname=$(basename "$dir")
+            echo "<li><a href='./$dirname/'>$dirname</a></li>" >> all-reports/index.html
+          done
+          echo "</ul>" >> all-reports/index.html
+
+      # 部署到 GitHub Pages（只执行一次）
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./playwright-report
+          # 注意：你需要修改这里。因为下载后会产生多级目录，部署根目录
+          publish_dir: F:\all-reports
           publish_branch: hq-pages
       
       - name: Add link to report in summary
         run: |
           echo "## 测试报告" >> "$GITHUB_STEP_SUMMARY"
-          echo "[报告链接](https://${{ github.repository_owner }}.github.io/playwright-second/)" >> "$GITHUB_STEP_SUMMARY"
-
+          echo "[点击查看报告链接](https://${{ github.repository_owner }}.github.io/playwright-second/)" >> "$GITHUB_STEP_SUMMARY"
