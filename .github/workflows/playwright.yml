@@ -76,7 +76,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           # 注意：你需要修改这里。因为下载后会产生多级目录，部署根目录
-          publish_dir: F:\all-reports
+          publish_dir: ./all-reports
           publish_branch: hq-pages
       
       - name: Add link to report in summary
